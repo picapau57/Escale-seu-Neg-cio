@@ -107,17 +107,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ language }) => {
     const newMode = sampleMode ? "sample" : "realtime";
     setMetricsMode(newMode);
 
+    const safeTx = Array.isArray(liveTransactions) ? liveTransactions : [];
     if (!sampleMode) {
-      const approved = liveTransactions.filter((t) => t.status === "approved");
-      const realRev = approved.reduce((sum, t) => sum + Number(t.amountBRL || 0), 0);
+      const approved = safeTx.filter((t) => t && t.status === "approved");
+      const realRev = approved.reduce((sum, t) => sum + Number(t?.amountBRL || 0), 0);
       setLiveMetrics({
         today: realRev,
         weekly: realRev,
         monthly: realRev,
         yearly: realRev,
-        liveUsers: Math.max(1, approved.length),
+        liveUsers: Math.max(0, approved.length),
         approvedTxCount: approved.length,
-        totalTxCount: liveTransactions.length,
+        totalTxCount: safeTx.length,
       });
     } else {
       setLiveMetrics({
@@ -127,7 +128,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ language }) => {
         yearly: 2050000,
         liveUsers: 1482,
         approvedTxCount: 0,
-        totalTxCount: liveTransactions.length,
+        totalTxCount: safeTx.length,
       });
     }
 
@@ -137,10 +138,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ language }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sampleMode }),
       });
-      const data = await res.json();
-      if (data.success) {
-        setMetricsMode(data.mode);
-        if (data.metrics) setLiveMetrics(data.metrics);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success) {
+          setMetricsMode(data.mode || newMode);
+          if (data.metrics) setLiveMetrics(data.metrics);
+          if (Array.isArray(data.transactions)) setLiveTransactions(data.transactions);
+        }
       }
     } catch (err) {
       console.error("Error toggling metrics mode:", err);
@@ -201,15 +205,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ language }) => {
       setTestStatus({ status: "error", message: "⚠️ Não foi possível validar o token junto ao Mercado Pago." });
     }
   };
-  const revenueData = [
-    { day: "Seg", revenue: 4200 },
-    { day: "Ter", revenue: 5800 },
-    { day: "Qua", revenue: 7100 },
-    { day: "Qui", revenue: 6400 },
-    { day: "Sex", revenue: 8900 },
-    { day: "Sáb", revenue: 10200 },
-    { day: "Dom", revenue: 12500 },
-  ];
+  const revenueData = metricsMode === "realtime"
+    ? [
+        { day: "Seg", revenue: 0 },
+        { day: "Ter", revenue: 0 },
+        { day: "Qua", revenue: 0 },
+        { day: "Qui", revenue: 0 },
+        { day: "Sex", revenue: 0 },
+        { day: "Sáb", revenue: 0 },
+        { day: "Hoje", revenue: liveMetrics?.today || 0 },
+      ]
+    : [
+        { day: "Seg", revenue: 4200 },
+        { day: "Ter", revenue: 5800 },
+        { day: "Qua", revenue: 7100 },
+        { day: "Qui", revenue: 6400 },
+        { day: "Sex", revenue: 8900 },
+        { day: "Sáb", revenue: 10200 },
+        { day: "Dom", revenue: 12500 },
+      ];
 
   const planDistribution = [
     { name: "Starter", value: 450, color: "#38bdf8" },
@@ -253,7 +267,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ language }) => {
             <span className="block text-[10px] text-slate-500">Usuários Online:</span>
             <span className="text-lg font-black text-cyan-400 flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></span>
-              {liveMetrics.liveUsers.toLocaleString("pt-BR")} Ao Vivo
+              {(liveMetrics?.liveUsers ?? 0).toLocaleString("pt-BR")} Ao Vivo
             </span>
           </div>
         </div>
@@ -340,17 +354,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ language }) => {
             <div className="bg-[#0A0A0A] p-6 rounded-3xl border border-white/10 space-y-1 shadow-xl">
               <span className="text-xs text-slate-400 font-bold">{getTranslation(language, "todayRev")}</span>
               <div className="text-2xl font-black text-cyan-400">
-                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(liveMetrics.today)}
+                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(liveMetrics?.today ?? 0)}
               </div>
               <span className="text-[10px] text-cyan-400/80 font-semibold">
-                {metricsMode === "realtime" ? `${liveMetrics.approvedTxCount} Vendas Aprovadas` : "+18.4% vs ontem"}
+                {metricsMode === "realtime" ? `${liveMetrics?.approvedTxCount ?? 0} Vendas Aprovadas` : "+18.4% vs ontem"}
               </span>
             </div>
 
             <div className="bg-[#0A0A0A] p-6 rounded-3xl border border-white/10 space-y-1 shadow-xl">
               <span className="text-xs text-slate-400 font-bold">{getTranslation(language, "weeklyRev")}</span>
               <div className="text-2xl font-black text-white">
-                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(liveMetrics.weekly)}
+                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(liveMetrics?.weekly ?? 0)}
               </div>
               <span className="text-[10px] text-slate-500">Semana Atual</span>
             </div>
@@ -358,7 +372,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ language }) => {
             <div className="bg-[#0A0A0A] p-6 rounded-3xl border border-white/10 space-y-1 shadow-xl">
               <span className="text-xs text-slate-400 font-bold">{getTranslation(language, "monthlyRev")}</span>
               <div className="text-2xl font-black text-cyan-400">
-                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(liveMetrics.monthly)}
+                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(liveMetrics?.monthly ?? 0)}
               </div>
               <span className="text-[10px] text-cyan-400/80 font-semibold">MRR Ativo</span>
             </div>
@@ -366,7 +380,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ language }) => {
             <div className="bg-[#0A0A0A] p-6 rounded-3xl border border-white/10 space-y-1 shadow-xl">
               <span className="text-xs text-slate-400 font-bold">{getTranslation(language, "annualRev")}</span>
               <div className="text-2xl font-black text-cyan-400">
-                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(liveMetrics.yearly)}
+                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(liveMetrics?.yearly ?? 0)}
               </div>
               <span className="text-[10px] text-slate-500">ARR Projetado</span>
             </div>
@@ -441,11 +455,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ language }) => {
                 Histórico de Transações do Servidor (Tempo Real)
               </h3>
               <span className="text-xs text-slate-400">
-                {liveTransactions.length} transação(ões) registrada(s)
+                {(Array.isArray(liveTransactions) ? liveTransactions : []).length} transação(ões) registrada(s)
               </span>
             </div>
 
-            {liveTransactions.length === 0 ? (
+            {(!Array.isArray(liveTransactions) || liveTransactions.length === 0) ? (
               <div className="p-8 text-center border border-dashed border-white/10 rounded-2xl">
                 <p className="text-xs text-slate-400">
                   Nenhuma transação registrada no momento. Faça um teste gerando ou pagando um PIX nos planos ou no mercado digital!
