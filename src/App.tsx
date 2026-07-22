@@ -10,6 +10,7 @@ import { AdminPanel } from "./components/AdminPanel";
 import { AuthModal } from "./components/AuthModal";
 import { PixPaymentModal } from "./components/PixPaymentModal";
 import { LiveChatWidget } from "./components/LiveChatWidget";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { PLANS_DATA } from "./data/plans";
 import { getTranslation } from "./i18n/translations";
 import { Sparkles, ShieldCheck, Heart } from "lucide-react";
@@ -22,7 +23,26 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem("profit_user");
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object") {
+          return {
+            id: parsed.id || "USR-77821",
+            name: parsed.name || "Alexandre Silva",
+            email: parsed.email || "founder@profitai.com",
+            role: parsed.role || "admin",
+            plan: parsed.plan || "professional",
+            billingCycle: parsed.billingCycle || "annual",
+            creditsUsed: typeof parsed.creditsUsed === "number" ? parsed.creditsUsed : 420,
+            creditsLimit: typeof parsed.creditsLimit === "number" ? parsed.creditsLimit : 5000,
+            isTwoFactorEnabled: parsed.isTwoFactorEnabled ?? true,
+            emailVerified: parsed.emailVerified ?? true,
+            referralCode: parsed.referralCode || "PROFIT-8821",
+            affiliateEarnings: typeof parsed.affiliateEarnings === "number" ? parsed.affiliateEarnings : 240.50,
+            joinedAt: parsed.joinedAt || "2026-01-15",
+          };
+        }
+      } catch (e) {}
     }
     // Default logged in demo user for immediate rich testing
     return {
@@ -153,50 +173,62 @@ export default function App() {
       {/* Main View Router */}
       <main className="flex-1">
         {activeTab === "landing" && (
-          <LandingPage
-            language={language}
-            onExploreTools={() => setActiveTab("tools")}
-            onOpenPricing={() => setActiveTab("pricing")}
-            onOpenAuth={() => setIsAuthModalOpen(true)}
-          />
+          <ErrorBoundary fallbackMessage="Erro ao carregar a Página Inicial">
+            <LandingPage
+              language={language}
+              onExploreTools={() => setActiveTab("tools")}
+              onOpenPricing={() => setActiveTab("pricing")}
+              onOpenAuth={() => setIsAuthModalOpen(true)}
+            />
+          </ErrorBoundary>
         )}
 
         {activeTab === "tools" && (
-          <AIToolsHub
-            language={language}
-            currentUser={currentUser}
-            onOpenPricing={() => setActiveTab("pricing")}
-            onOpenAuth={() => setIsAuthModalOpen(true)}
-          />
+          <ErrorBoundary fallbackMessage="Erro ao carregar o Hub de Ferramentas de IA">
+            <AIToolsHub
+              language={language}
+              currentUser={currentUser}
+              onOpenPricing={() => setActiveTab("pricing")}
+              onOpenAuth={() => setIsAuthModalOpen(true)}
+            />
+          </ErrorBoundary>
         )}
 
         {activeTab === "marketplace" && (
-          <MarketplaceHub
-            language={language}
-            currentUser={currentUser}
-            onOpenPixCheckout={handleOpenPixForMarketplaceItem}
-            onOpenAuth={() => setIsAuthModalOpen(true)}
-          />
+          <ErrorBoundary fallbackMessage="Erro ao carregar o Marketplace">
+            <MarketplaceHub
+              language={language}
+              currentUser={currentUser}
+              onOpenPixCheckout={handleOpenPixForMarketplaceItem}
+              onOpenAuth={() => setIsAuthModalOpen(true)}
+            />
+          </ErrorBoundary>
         )}
 
         {(activeTab === "pricing" || activeTab === "affiliates") && (
-          <PricingSection
-            language={language}
-            onSelectPlan={(plan, cycle) => handleOpenPixForPlan(plan, cycle)}
-          />
+          <ErrorBoundary fallbackMessage="Erro ao carregar os Planos">
+            <PricingSection
+              language={language}
+              onSelectPlan={(plan, cycle) => handleOpenPixForPlan(plan, cycle)}
+            />
+          </ErrorBoundary>
         )}
 
         {activeTab === "dashboard" && currentUser && (
-          <UserDashboard
-            language={language}
-            currentUser={currentUser}
-            onOpenPricing={() => setActiveTab("pricing")}
-            onSelectToolTab={() => setActiveTab("tools")}
-          />
+          <ErrorBoundary fallbackMessage="Erro ao carregar o Painel do Usuário">
+            <UserDashboard
+              language={language}
+              currentUser={currentUser}
+              onOpenPricing={() => setActiveTab("pricing")}
+              onSelectToolTab={() => setActiveTab("tools")}
+            />
+          </ErrorBoundary>
         )}
 
         {activeTab === "admin" && currentUser?.role === "admin" && (
-          <AdminPanel language={language} />
+          <ErrorBoundary fallbackMessage="Erro ao carregar o Painel do Administrador">
+            <AdminPanel language={language} />
+          </ErrorBoundary>
         )}
       </main>
 
