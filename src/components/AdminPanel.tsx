@@ -412,8 +412,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ language }) => {
                       </linearGradient>
                     </defs>
                     <XAxis dataKey="day" stroke="#64748b" fontSize={11} />
-                    <YAxis stroke="#64748b" fontSize={11} domain={[0, (dataMax: number) => Math.max(Number(dataMax) || 0, 100)]} allowDecimals={false} />
+                    <YAxis stroke="#64748b" fontSize={11} domain={[0, "auto"]} allowDecimals={false} />
                     <Tooltip
+                      formatter={(val: any) => [`R$ ${Number(val || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, "Faturamento"]}
                       contentStyle={{ backgroundColor: "#0A0A0A", borderColor: "#334155", borderRadius: "12px", fontSize: "12px" }}
                     />
                     <Area type="monotone" dataKey="revenue" stroke="#22d3ee" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
