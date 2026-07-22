@@ -63,11 +63,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ language }) => {
   const fetchMetrics = async () => {
     try {
       const res = await fetch("/api/admin/metrics");
-      const data = await res.json();
-      if (data.success) {
-        setMetricsMode(data.mode);
-        if (data.metrics) setLiveMetrics(data.metrics);
-        if (data.transactions) setLiveTransactions(data.transactions);
+      const contentType = res.headers.get("content-type");
+      if (res.ok && contentType && contentType.includes("application/json")) {
+        const data = await res.json();
+        if (data && data.success) {
+          setMetricsMode(data.mode);
+          if (data.metrics) setLiveMetrics(data.metrics);
+          if (Array.isArray(data.transactions)) setLiveTransactions(data.transactions);
+        }
       }
     } catch (err) {
       console.warn("Could not fetch metrics:", err);
@@ -86,10 +89,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ language }) => {
         }
 
         const res = await fetch("/api/admin/mercadopago-keys");
-        const data = await res.json();
-        if (data.success) {
-          if (data.mpAccessToken) setMpAccessToken(data.mpAccessToken);
-          if (data.mpPublicKey) setMpPublicKey(data.mpPublicKey);
+        const contentType = res.headers.get("content-type");
+        if (res.ok && contentType && contentType.includes("application/json")) {
+          const data = await res.json();
+          if (data && data.success) {
+            if (data.mpAccessToken) setMpAccessToken(data.mpAccessToken);
+            if (data.mpPublicKey) setMpPublicKey(data.mpPublicKey);
+          }
         }
       } catch (err) {
         console.warn("Could not load MP keys from server:", err);
@@ -138,7 +144,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ language }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sampleMode }),
       });
-      if (res.ok) {
+      const contentType = res.headers.get("content-type");
+      if (res.ok && contentType && contentType.includes("application/json")) {
         const data = await res.json();
         if (data && data.success) {
           setMetricsMode(data.mode || newMode);
@@ -405,7 +412,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ language }) => {
                       </linearGradient>
                     </defs>
                     <XAxis dataKey="day" stroke="#64748b" fontSize={11} />
-                    <YAxis stroke="#64748b" fontSize={11} />
+                    <YAxis stroke="#64748b" fontSize={11} domain={[0, (dataMax: number) => Math.max(Number(dataMax) || 0, 100)]} allowDecimals={false} />
                     <Tooltip
                       contentStyle={{ backgroundColor: "#0A0A0A", borderColor: "#334155", borderRadius: "12px", fontSize: "12px" }}
                     />
