@@ -187,7 +187,7 @@ app.get("/api/admin/metrics", (req, res) => {
         weekly: revenueTotal,
         monthly: revenueTotal,
         yearly: revenueTotal,
-        liveUsers: Math.max(1, approvedTx.length > 0 ? approvedTx.length : 1),
+        liveUsers: Math.max(1, approvedTx.length),
         approvedTxCount: approvedTx.length,
         totalTxCount: allTx.length,
       },
@@ -203,9 +203,42 @@ app.post("/api/admin/metrics/reset-sample", (req, res) => {
   } else {
     useSampleMetrics = !useSampleMetrics;
   }
+
+  const allTx = Array.from(activePixTransactions.values());
+  const approvedTx = allTx.filter((t) => t.status === "approved");
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  const revenueToday = approvedTx
+    .filter((t) => (t.paidAt || t.createdAt).startsWith(todayStr))
+    .reduce((sum, t) => sum + Number(t.amountBRL || 0), 0);
+
+  const revenueTotal = approvedTx.reduce((sum, t) => sum + Number(t.amountBRL || 0), 0);
+
+  const mode = useSampleMetrics ? "sample" : "realtime";
+  const metrics = useSampleMetrics
+    ? {
+        today: 7100.00 + revenueToday,
+        weekly: 44750.00 + revenueTotal,
+        monthly: 171000.00 + revenueTotal,
+        yearly: 2050000.00 + revenueTotal,
+        liveUsers: 1482,
+        approvedTxCount: approvedTx.length,
+        totalTxCount: allTx.length,
+      }
+    : {
+        today: revenueToday,
+        weekly: revenueTotal,
+        monthly: revenueTotal,
+        yearly: revenueTotal,
+        liveUsers: Math.max(1, approvedTx.length),
+        approvedTxCount: approvedTx.length,
+        totalTxCount: allTx.length,
+      };
+
   return res.json({
     success: true,
-    mode: useSampleMetrics ? "sample" : "realtime",
+    mode,
+    metrics,
     message: useSampleMetrics
       ? "Exibindo dados de exemplo para demonstração."
       : "Dados de exemplo zerados! Exibindo faturamento 100% REAL em tempo real.",

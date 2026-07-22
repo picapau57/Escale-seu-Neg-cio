@@ -103,6 +103,34 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ language }) => {
   }, []);
 
   const handleToggleMetricsMode = async (sampleMode: boolean) => {
+    // Immediate optimistic UI update on click
+    const newMode = sampleMode ? "sample" : "realtime";
+    setMetricsMode(newMode);
+
+    if (!sampleMode) {
+      const approved = liveTransactions.filter((t) => t.status === "approved");
+      const realRev = approved.reduce((sum, t) => sum + Number(t.amountBRL || 0), 0);
+      setLiveMetrics({
+        today: realRev,
+        weekly: realRev,
+        monthly: realRev,
+        yearly: realRev,
+        liveUsers: Math.max(1, approved.length),
+        approvedTxCount: approved.length,
+        totalTxCount: liveTransactions.length,
+      });
+    } else {
+      setLiveMetrics({
+        today: 7100,
+        weekly: 44750,
+        monthly: 171000,
+        yearly: 2050000,
+        liveUsers: 1482,
+        approvedTxCount: 0,
+        totalTxCount: liveTransactions.length,
+      });
+    }
+
     try {
       const res = await fetch("/api/admin/metrics/reset-sample", {
         method: "POST",
@@ -111,7 +139,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ language }) => {
       });
       const data = await res.json();
       if (data.success) {
-        fetchMetrics();
+        setMetricsMode(data.mode);
+        if (data.metrics) setLiveMetrics(data.metrics);
       }
     } catch (err) {
       console.error("Error toggling metrics mode:", err);
