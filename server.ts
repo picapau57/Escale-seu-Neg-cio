@@ -149,6 +149,77 @@ let mpConfig = {
   updatedAt: new Date().toISOString(),
 };
 
+let useSampleMetrics = true; // Toggle for demo vs live data
+
+app.get("/api/admin/metrics", (req, res) => {
+  const allTx = Array.from(activePixTransactions.values());
+  const approvedTx = allTx.filter((t) => t.status === "approved");
+
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  const revenueToday = approvedTx
+    .filter((t) => (t.paidAt || t.createdAt).startsWith(todayStr))
+    .reduce((sum, t) => sum + Number(t.amountBRL || 0), 0);
+
+  const revenueTotal = approvedTx.reduce((sum, t) => sum + Number(t.amountBRL || 0), 0);
+
+  if (useSampleMetrics) {
+    return res.json({
+      success: true,
+      mode: "sample",
+      metrics: {
+        today: 7100.00 + revenueToday,
+        weekly: 44750.00 + revenueTotal,
+        monthly: 171000.00 + revenueTotal,
+        yearly: 2050000.00 + revenueTotal,
+        liveUsers: 1482,
+        approvedTxCount: approvedTx.length,
+        totalTxCount: allTx.length,
+      },
+      transactions: allTx,
+    });
+  } else {
+    return res.json({
+      success: true,
+      mode: "realtime",
+      metrics: {
+        today: revenueToday,
+        weekly: revenueTotal,
+        monthly: revenueTotal,
+        yearly: revenueTotal,
+        liveUsers: Math.max(1, approvedTx.length > 0 ? approvedTx.length : 1),
+        approvedTxCount: approvedTx.length,
+        totalTxCount: allTx.length,
+      },
+      transactions: allTx,
+    });
+  }
+});
+
+app.post("/api/admin/metrics/reset-sample", (req, res) => {
+  const { sampleMode } = req.body;
+  if (typeof sampleMode === "boolean") {
+    useSampleMetrics = sampleMode;
+  } else {
+    useSampleMetrics = !useSampleMetrics;
+  }
+  return res.json({
+    success: true,
+    mode: useSampleMetrics ? "sample" : "realtime",
+    message: useSampleMetrics
+      ? "Exibindo dados de exemplo para demonstração."
+      : "Dados de exemplo zerados! Exibindo faturamento 100% REAL em tempo real.",
+  });
+});
+
+app.post("/api/admin/metrics/clear-transactions", (req, res) => {
+  activePixTransactions.clear();
+  return res.json({
+    success: true,
+    message: "Histórico de transações de teste zerado com sucesso!",
+  });
+});
+
 app.get("/api/admin/mercadopago-keys", (req, res) => {
   return res.json({
     success: true,
